@@ -6,20 +6,14 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import io.reactivex.android.schedulers.AndroidSchedulers
 
-class MacGrouperRecyclerAdapter(
-  @LayoutRes private val headerLayout: Int,
-  @LayoutRes private val childLayout: Int
-): RecyclerView.Adapter<ViewHolder>() {
+class MacGrouperRecyclerAdapter(var data: List<Item>): RecyclerView.Adapter<ViewHolder>() {
 
   companion object {
     private const val VIEW_TYPE_GROUP = 1
     private const val VIEW_TYPE_CHILD = 2
   }
 
-  var data = listOf<Item<ViewHolder>>(
-    GroupItem(),
-    GroupItem()
-  )
+  private var lastItemForViewTypeLookup: Item? = null
 
   init {
     data.forEach { group ->
@@ -51,56 +45,21 @@ class MacGrouperRecyclerAdapter(
   }
 
   override fun getItemViewType(position: Int): Int {
-
-    System.out.println("Getting for position: $position")
-
-    var count = 0
-    data.forEach { group ->
-      if (position < count + group.visibleCount) {
-        return if (position - count == 0) {
-          System.out.println("---------Group")
-          VIEW_TYPE_GROUP
-        } else {
-          System.out.println("---------Child")
-          VIEW_TYPE_CHILD
-        }
-      }
-      count += group.visibleCount
-    }
-
-    throw RuntimeException("Unknown View Type")
+    val group = getGroupAtPosition(position)
+    lastItemForViewTypeLookup = group
+    return group.getLayout()
   }
 
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
     val inflater = LayoutInflater.from(parent.context)
-    return when(viewType) {
-      VIEW_TYPE_GROUP -> {
-        val view = inflater.inflate(headerLayout, parent, false)
-        ViewHolder(view) //TODO: Correct View Holder
-      }
-      VIEW_TYPE_CHILD -> {
-        val view = inflater.inflate(childLayout, parent, false)
-        ViewHolder(view) //TODO: Correct View Holder
-      }
-      else -> throw RuntimeException("Attempting to create a ViewHolder for an unknown type")
-    }
+    val item = getItemForViewType(viewType)
+    val itemView = inflater.inflate(viewType, parent, false)
+    return item.createViewHolder(itemView)
   }
 
   override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-    var count = 0
-
-    data.forEach { group ->
-      System.out.print("HEADER ")
-
-      if (group is GroupItem) {
-        System.out.print(if (group.isExpanded) group.children.map { " CHILD " } else "")
-      }
-    }
-
-    System.out.println("------")
-
     val item = getGroupAtPosition(position)
-    holder.bind(item)
+    item.bind(holder.view)
     holder.view.setOnClickListener {
       if (item is HeaderItem) {
         item.toggleExpand()
@@ -108,20 +67,18 @@ class MacGrouperRecyclerAdapter(
     }
   }
 
-  private fun getGroupAtPosition(position: Int): Item<ViewHolder> {
+  private fun getGroupAtPosition(position: Int): Item {
     var count = 0
     data.forEach { group ->
       if (position < count + group.visibleCount) {
         return group.getItem(position - count)
       }
-
       count += group.visibleCount
     }
-
-    throw RuntimeException("Couldnt find that Group dog")
+    throw RuntimeException("Couldn't find that Group dog")
   }
 
-  private fun getPositionForGroup(group: GroupItem<ViewHolder>): Int {
+  private fun getPositionForGroup(group: GroupItem): Int {
     System.out.println(data)
 
     var count = 0
@@ -133,5 +90,38 @@ class MacGrouperRecyclerAdapter(
     }
 
     throw RuntimeException("Couldn't find that group dog")
+  }
+
+  /**
+   * This idea was copied from Epoxy. :wave: Bright idea guys!
+   *
+   *
+   * Find the model that has the given view type so we can create a viewholder for that model.
+   *
+   *
+   * To make this efficient, we rely on the RecyclerView implementation detail that [ ][GroupAdapter.getItemViewType] is called immediately before [ ][GroupAdapter.onCreateViewHolder]. We cache the last model
+   * that had its view type looked up, and unless that implementation changes we expect to have a
+   * very fast lookup for the correct model.
+   *
+   *
+   * To be safe, we fallback to searching through all models for a view type match. This is slow and
+   * shouldn't be needed, but is a guard against RecyclerView behavior changing.
+   */
+  private fun getItemForViewType(@LayoutRes layoutResId: Int): Item {
+    val lastItem = lastItemForViewTypeLookup
+    if (lastItem != null && lastItem.getLayout() == layoutResId) {
+      // We expect this to be a hit 100% of the time
+      return lastItem
+    }
+
+    // To be extra safe in case RecyclerView implementation details change...
+    for (i in 0 until itemCount) {
+      val item = getGroupAtPosition(i)
+      if (item.getLayout() == layoutResId) {
+        return item
+      }
+    }
+
+    throw IllegalStateException("Could not find model for view type: " + layoutResId)
   }
 }

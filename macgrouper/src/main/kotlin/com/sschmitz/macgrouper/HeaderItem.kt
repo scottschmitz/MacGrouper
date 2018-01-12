@@ -1,9 +1,8 @@
 package com.sschmitz.macgrouper
 
-import android.support.v7.widget.RecyclerView
 import io.reactivex.subjects.BehaviorSubject
 
-class HeaderItem<out VH: RecyclerView.ViewHolder>: Item<VH>() {
+abstract class HeaderItem: Item() {
   override val itemCount = 1
   override val visibleCount = 1
 
@@ -14,7 +13,7 @@ class HeaderItem<out VH: RecyclerView.ViewHolder>: Item<VH>() {
   }
   val expandSubject = BehaviorSubject.create<Boolean>()
 
-  override fun getItem(position: Int): Item<VH> {
+  override fun getItem(position: Int): Item {
     return this
   }
 

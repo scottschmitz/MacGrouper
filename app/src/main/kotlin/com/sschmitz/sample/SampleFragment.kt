@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import butterknife.BindView
 import butterknife.ButterKnife
 import butterknife.Unbinder
+import com.sschmitz.macgrouper.GroupItem
 import com.sschmitz.macgrouper.MacGrouperRecyclerAdapter
 
 class SampleFragment: Fragment() {
@@ -23,7 +24,23 @@ class SampleFragment: Fragment() {
     unbinder = ButterKnife.bind(this, view)
 
     recyclerView.layoutManager = LinearLayoutManager(context)
-    recyclerView.adapter = MacGrouperRecyclerAdapter(R.layout.group_header_item, R.layout.group_child_item)
+
+    val group = GroupItem(
+      GroupHeaderItem(),
+      listOf(GroupChildItem(), GroupChildItem())
+    )
+
+    val group2 = GroupItem(
+      GroupHeaderItem(),
+      listOf(GroupChildItem(), GroupChildItem())
+    )
+
+    val group3 = GroupItem(
+      GroupHeaderItem(),
+      listOf(GroupChildItem(), GroupChildItem())
+    )
+
+    recyclerView.adapter = MacGrouperRecyclerAdapter(listOf(group, group2, group3))
 
     return view
   }
